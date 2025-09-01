@@ -8,16 +8,14 @@ from urllib.parse import urlparse
 
 from loguru import logger
 
-STATIC_FILES_DIR = "frontend"
+STATIC_FILES_DIR = "static"
 UPLOAD_DIR = "images"
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif"]
-LOG_DIR = "logs"
 
 logger.add("logs/app.log", rotation="1 week")
 
 if not os.path.exists(UPLOAD_DIR):
-    logger.info(f"Директория {UPLOAD_DIR} не существует")
     os.mkdir(UPLOAD_DIR)
     logger.info(f"Директория {UPLOAD_DIR} создана")
 
@@ -50,7 +48,7 @@ class ImageHostingHandler(http.server.BaseHTTPRequestHandler):
         elif file_path.endswith(".css"):
             return "text/css"
         elif file_path.endswith(".js"):
-            return "text/js"
+            return "application/javascript"
         elif file_path.endswith((".png", ".jpg", ".jpeg", ".gif")):
             return "image/" + file_path.split('.')[-1]
         else:
@@ -61,7 +59,7 @@ class ImageHostingHandler(http.server.BaseHTTPRequestHandler):
         
         Поддерживает:
         - Корневой маршрут '/' - отдает index.html
-        - Статические файлы из папки frontend
+        - Статические файлы из папки static
         - Маршрут '/static/' для статических ресурсов
         """
         parsed_path = urlparse(self.path)
