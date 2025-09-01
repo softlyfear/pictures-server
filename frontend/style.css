@@ -310,11 +310,185 @@ body {
     accent-color: var(--primary-blue);
 }
 
+/* Images List */
+.images-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.images-header h3 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin: 0;
+}
+
+.clear-all-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.clear-all-btn:hover {
+    background-color: #c82333;
+}
+
+.image-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.image-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: #fff;
+    transition: background-color 0.2s;
+    gap: 16px;
+}
+
+.image-item:hover {
+    background-color: #f8f9fa;
+}
+
+.image-item__name {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: 1;
+    min-width: 0;
+}
+
+.image-preview {
+    flex-shrink: 0;
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 2px solid var(--border-color);
+    background-color: #f8f9fa;
+}
+
+.preview-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.image-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.image-name {
+    font-weight: 600;
+    color: var(--text-dark);
+    font-size: 16px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.image-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.image-item__url {
+    flex: 1;
+    min-width: 0;
+    margin: 0 20px;
+}
+
+.image-item__url a {
+    color: var(--text-muted);
+    text-decoration: none;
+    word-break: break-all;
+    font-size: 14px;
+    display: block;
+    padding: 8px 12px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+}
+
+.image-item__url a:hover {
+    text-decoration: none;
+    color: var(--primary-blue);
+    background-color: #e7f3ff;
+    border-color: var(--primary-blue);
+}
+
+.image-item__delete {
+    flex-shrink: 0;
+}
+
+.delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 18px;
+    padding: 8px;
+    border-radius: 50%;
+    transition: all 0.2s;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.delete-btn:hover {
+    color: var(--error-color);
+    background-color: #fdeeee;
+    transform: scale(1.1);
+}
+
+/* Upload Success Animation */
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.upload-success {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.upload-success i {
+    font-size: 18px;
+}
+
 /* Empty State */
 .empty-state {
     text-align: center;
     padding: 60px 20px;
     color: var(--text-muted);
+    list-style: none;
 }
 
 .empty-state i {
@@ -401,5 +575,64 @@ body {
     .images-table th,
     .images-table td {
         padding: 8px 4px;
+    }
+}
+
+/* Responsive Design for Images */
+@media (max-width: 768px) {
+    .image-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 20px;
+    }
+    
+    .image-item__name {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .image-preview {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .image-item__url {
+        width: 100%;
+        margin: 0;
+    }
+    
+    .image-item__delete {
+        align-self: flex-end;
+    }
+    
+    .delete-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .image-item {
+        padding: 16px;
+    }
+    
+    .image-preview {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .image-name {
+        font-size: 14px;
+    }
+    
+    .image-meta {
+        font-size: 11px;
+    }
+    
+    .image-item__url a {
+        font-size: 12px;
+        padding: 6px 8px;
     }
 }

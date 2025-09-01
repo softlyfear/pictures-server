@@ -11,19 +11,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const uploadError = document.getElementById('upload-error');
     const urlInput = document.getElementById('url-input');
     const copyBtn = document.getElementById('copy-btn');
-    const imagesTableBody = document.getElementById('images-table-body');
-    const imageRowTemplate = document.getElementById('image-row-template');
-    const selectAllCheckbox = document.getElementById('select-all-checkbox');
-    const emptyState = document.querySelector('.empty-state');
+    const imageList = document.getElementById('image-list');
+    const imageItemTemplate = document.getElementById('image-item-template');
+    const clearAllBtn = document.getElementById('clear-all-btn');
 
     const heroImages = [
-        'assets/images/bird.png',
-        'assets/images/cat.png',
-        'assets/images/dog1.png',
-        'assets/images/dog2.png',
-        'assets/images/dog3.png',
+        'assets/bird.png',
+        'assets/cat.png',
+        'assets/dog1.png',
+        'assets/dog2.png',
+        'assets/dog3.png',
     ];
     let uploadedImages = [];
+    let db;
+
+    // IndexedDB setup
+    function initDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open('ImageUploaderDB', 1);
+            
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+                db = request.result;
+                resolve(db);
+            };
+            
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('images')) {
+                    const store = db.createObjectStore('images', { keyPath: 'id' });
+                    store.createIndex('uploadDate', 'uploadDate', { unique: false });
+                }
+            };
+        });
+    }
 
     function setRandomHeroImage() {
         const randomIndex = Math.floor(Math.random() * heroImages.length);
@@ -61,23 +82,64 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadError.classList.add('hidden');
         copyBtn.disabled = true;
         
+        // Create a preview of the image
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const imageData = {
+                id: Date.now(),
+                name: file.name,
+                url: `https://sharefile.xyz/${Date.now()}-${file.name.replace(/\s+/g, '-')}`,
+                preview: e.target.result,
+                size: file.size,
+                type: file.type,
+                uploadDate: new Date().toISOString()
+            };
+            
+            setTimeout(() => {
+                if (Math.random() < 0.9) { // Increased success rate
+                    urlInput.value = imageData.url;
+                    copyBtn.disabled = false;
+                    
+                    uploadedImages.unshift(imageData); // Add to beginning of array
+                    saveToStorage(imageData);
+                    
+                    // Show success message
+                    showUploadSuccess();
+                } else {
+                    uploadError.textContent = 'Upload failed. Please try again.';
+                    uploadError.classList.remove('hidden');
+                }
+            }, 1500);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function showUploadSuccess() {
+        const successMessage = document.createElement('div');
+        successMessage.className = 'upload-success';
+        successMessage.innerHTML = `
+            <i class="fas fa-check-circle"></i>
+            <span>Image uploaded successfully!</span>
+        `;
+        successMessage.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        `;
+        document.body.appendChild(successMessage);
+        
         setTimeout(() => {
-            if (Math.random() < 0.8) {
-                const fakeUrl = `https://sharefile.xyz/${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
-                urlInput.value = fakeUrl;
-                copyBtn.disabled = false;
-                
-                const imageData = {
-                    id: Date.now(),
-                    name: file.name,
-                    url: fakeUrl
-                };
-                uploadedImages.push(imageData);
-                saveToLocalStorage();
-            } else {
-                uploadError.classList.remove('hidden');
-            }
-        }, 2000);
+            successMessage.remove();
+        }, 3000);
     }
 
     browseBtn.addEventListener('click', () => fileInput.click());
@@ -136,90 +198,208 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
+
     function renderImages() {
-        imagesTableBody.innerHTML = '';
+        imageList.innerHTML = '';
         
         if (uploadedImages.length === 0) {
-            emptyState.classList.remove('hidden');
+            const emptyMessage = document.createElement('li');
+            emptyMessage.className = 'empty-state';
+            emptyMessage.innerHTML = `
+                <i class="fas fa-images"></i>
+                <h3>No images uploaded yet</h3>
+                <p>Upload your first image to see it here</p>
+            `;
+            imageList.appendChild(emptyMessage);
             return;
         }
         
-        emptyState.classList.add('hidden');
-        
         uploadedImages.forEach(image => {
-            const template = imageRowTemplate.content.cloneNode(true);
-            const row = template.querySelector('.image-row');
+            const template = imageItemTemplate.content.cloneNode(true);
+            const item = template.querySelector('.image-item');
             
-            row.dataset.id = image.id;
-            row.querySelector('.file-name').textContent = image.name;
-            const urlLink = row.querySelector('.file-url');
+            item.dataset.id = image.id;
+            
+            // Update the template structure to include preview and metadata
+            const nameElement = item.querySelector('.image-item__name');
+            nameElement.innerHTML = `
+                <div class="image-preview">
+                    <img src="${image.preview}" alt="${image.name}" class="preview-thumbnail">
+                </div>
+                <div class="image-info">
+                    <span class="image-name">${image.name}</span>
+                    <span class="image-meta">${formatFileSize(image.size)} • ${formatDate(image.uploadDate)}</span>
+                </div>
+            `;
+            
+            const urlLink = item.querySelector('.image-item__url a');
             urlLink.href = image.url;
             urlLink.textContent = image.url;
             
-            // Bind checkbox event
-            const checkbox = row.querySelector('.image-checkbox');
-            checkbox.addEventListener('change', (e) => {
-                updateSelectAllState();
-            });
-            
             // Bind delete button event
-            const deleteBtn = row.querySelector('.delete-btn');
+            const deleteBtn = item.querySelector('.delete-btn');
             deleteBtn.addEventListener('click', () => {
                 deleteImage(image.id);
             });
             
-            imagesTableBody.appendChild(template);
+            imageList.appendChild(template);
         });
-        
-        updateSelectAllState();
     }
-
-    function updateSelectAllState() {
-        const checkboxes = imagesTableBody.querySelectorAll('.image-checkbox');
-        const checkedCheckboxes = imagesTableBody.querySelectorAll('.image-checkbox:checked');
-        
-        if (checkboxes.length === 0) {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = false;
-        } else if (checkedCheckboxes.length === 0) {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = false;
-        } else if (checkedCheckboxes.length === checkboxes.length) {
-            selectAllCheckbox.checked = true;
-            selectAllCheckbox.indeterminate = false;
-        } else {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = true;
-        }
-    }
-
-    selectAllCheckbox.addEventListener('change', (e) => {
-        const checkboxes = imagesTableBody.querySelectorAll('.image-checkbox');
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = e.target.checked;
-        });
-    });
 
     function deleteImage(imageId) {
         if (confirm('Are you sure you want to delete this image?')) {
             uploadedImages = uploadedImages.filter(img => img.id !== imageId);
+            deleteFromStorage(imageId);
             renderImages();
-            saveToLocalStorage();
         }
     }
 
-    function saveToLocalStorage() {
-        localStorage.setItem('uploadedImages', JSON.stringify(uploadedImages));
-    }
+    // Enhanced storage functions
+    async function saveToStorage(imageData) {
+        // Save to localStorage as backup
+        try {
+            localStorage.setItem('uploadedImages', JSON.stringify(uploadedImages));
+        } catch (e) {
+            console.warn('localStorage save failed:', e);
+        }
 
-    function loadFromLocalStorage() {
-        const saved = localStorage.getItem('uploadedImages');
-        if (saved) {
-            uploadedImages = JSON.parse(saved);
+        // Save to IndexedDB for better persistence
+        try {
+            if (db) {
+                const transaction = db.transaction(['images'], 'readwrite');
+                const store = transaction.objectStore('images');
+                await store.put(imageData);
+            }
+        } catch (e) {
+            console.warn('IndexedDB save failed:', e);
         }
     }
+
+    async function deleteFromStorage(imageId) {
+        // Delete from localStorage
+        try {
+            localStorage.setItem('uploadedImages', JSON.stringify(uploadedImages));
+        } catch (e) {
+            console.warn('localStorage delete failed:', e);
+        }
+
+        // Delete from IndexedDB
+        try {
+            if (db) {
+                const transaction = db.transaction(['images'], 'readwrite');
+                const store = transaction.objectStore('images');
+                await store.delete(imageId);
+            }
+        } catch (e) {
+            console.warn('IndexedDB delete failed:', e);
+        }
+    }
+
+    async function loadFromStorage() {
+        let loadedImages = [];
+        console.log('Loading images from storage...');
+
+        // Try to load from IndexedDB first
+        try {
+            if (db) {
+                console.log('Trying to load from IndexedDB...');
+                const transaction = db.transaction(['images'], 'readonly');
+                const store = transaction.objectStore('images');
+                const request = store.getAll();
+                
+                const images = await new Promise((resolve, reject) => {
+                    request.onsuccess = () => {
+                        console.log('IndexedDB images loaded:', request.result);
+                        resolve(request.result);
+                    };
+                    request.onerror = () => {
+                        console.error('IndexedDB load error:', request.error);
+                        reject(request.error);
+                    };
+                });
+                
+                loadedImages = images.sort((a, b) => new Date(b.uploadDate) - new Date(a.uploadDate));
+                console.log('Images sorted from IndexedDB:', loadedImages.length);
+            } else {
+                console.log('IndexedDB not available');
+            }
+        } catch (e) {
+            console.warn('IndexedDB load failed:', e);
+        }
+
+        // If IndexedDB is empty, try localStorage as fallback
+        if (loadedImages.length === 0) {
+            console.log('Trying localStorage as fallback...');
+            try {
+                const saved = localStorage.getItem('uploadedImages');
+                console.log('localStorage data:', saved);
+                if (saved) {
+                    loadedImages = JSON.parse(saved);
+                    console.log('Images loaded from localStorage:', loadedImages.length);
+                }
+            } catch (e) {
+                console.warn('localStorage load failed:', e);
+            }
+        }
+
+        uploadedImages = loadedImages;
+        console.log('Final uploadedImages array:', uploadedImages);
+        
+        // Force render if we're on images view
+        if (!imagesView.classList.contains('hidden')) {
+            renderImages();
+        }
+    }
+
+    async function clearAllImages() {
+        if (confirm('Are you sure you want to delete all images? This action cannot be undone.')) {
+            uploadedImages = [];
+            
+            // Clear localStorage
+            try {
+                localStorage.removeItem('uploadedImages');
+                console.log('localStorage cleared');
+            } catch (e) {
+                console.warn('localStorage clear failed:', e);
+            }
+
+            // Clear IndexedDB
+            try {
+                if (db) {
+                    const transaction = db.transaction(['images'], 'readwrite');
+                    const store = transaction.objectStore('images');
+                    await store.clear();
+                    console.log('IndexedDB cleared');
+                }
+            } catch (e) {
+                console.warn('IndexedDB clear failed:', e);
+            }
+
+            renderImages();
+        }
+    }
+
+    // Event listeners
+    clearAllBtn.addEventListener('click', clearAllImages);
 
     // Initialize
-    setRandomHeroImage();
-    loadFromLocalStorage();
+    async function initialize() {
+        setRandomHeroImage();
+        await initDB();
+        await loadFromStorage();
+    }
+
+    initialize();
 });

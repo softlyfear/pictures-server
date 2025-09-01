@@ -47,13 +47,22 @@
              </div>
 
              <div id="images-view" class="hidden">
+                 <div class="images-header">
+                     <h3>Uploaded Images</h3>
+                     <button id="clear-all-btn" class="clear-all-btn">Clear All</button>
+                 </div>
                  <ul id="image-list" class="image-list">
                  </ul>
                  <template id="image-item-template">
                      <li class="image-item">
                          <div class="image-item__name">
-                             <i class="fas fa-file-image"></i>
-                             <span>file-name.jpg</span>
+                             <div class="image-preview">
+                                 <img src="" alt="" class="preview-thumbnail">
+                             </div>
+                             <div class="image-info">
+                                 <span class="image-name">file-name.jpg</span>
+                                 <span class="image-meta">1.2 MB • 12.12.2023 15:30</span>
+                             </div>
                          </div>
                          <div class="image-item__url">
                              <a href="#" target="_blank">https://sharefile.xyz/file.jpg</a>
