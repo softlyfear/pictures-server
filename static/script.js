@@ -16,11 +16,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearAllBtn = document.getElementById('clear-all-btn');
 
     const heroImages = [
-        'assets/bird.png',
-        'assets/cat.png',
-        'assets/dog1.png',
-        'assets/dog2.png',
-        'assets/dog3.png',
+        '/static/assets/bird.png',
+        '/static/assets/cat.png',
+        '/static/assets/dog1.png',
+        '/static/assets/dog2.png',
+        '/static/assets/dog3.png',
     ];
     let uploadedImages = [];
     let db;
