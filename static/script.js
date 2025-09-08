@@ -15,6 +15,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageItemTemplate = document.getElementById('image-item-template');
     const clearAllBtn = document.getElementById('clear-all-btn');
 
+    // API endpoints
+    const API_UPLOAD = '/api/upload';
+    const API_LIST = '/api/images';
+    const IMG_BASE = '/images/';
+
     const heroImages = [
         '/static/assets/bird.png',
         '/static/assets/cat.png',
@@ -71,7 +76,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 uploadView.classList.add('hidden');
                 imagesView.classList.remove('hidden');
-                renderImages();
+                // Refresh from server before rendering
+                loadFromServerImages().then(() => renderImages());
             }
         });
     });
@@ -81,35 +87,47 @@ document.addEventListener('DOMContentLoaded', () => {
         urlInput.value = '';
         uploadError.classList.add('hidden');
         copyBtn.disabled = true;
-        
-        // Create a preview of the image
+
         const reader = new FileReader();
-        reader.onload = function(e) {
-            const imageData = {
-                id: Date.now(),
-                name: file.name,
-                url: `https://sharefile.xyz/${Date.now()}-${file.name.replace(/\s+/g, '-')}`,
-                preview: e.target.result,
-                size: file.size,
-                type: file.type,
-                uploadDate: new Date().toISOString()
-            };
-            
-            setTimeout(() => {
-                if (Math.random() < 0.9) { // Increased success rate
-                    urlInput.value = imageData.url;
-                    copyBtn.disabled = false;
-                    
-                    uploadedImages.unshift(imageData); // Add to beginning of array
-                    saveToStorage(imageData);
-                    
-                    // Show success message
-                    showUploadSuccess();
-                } else {
-                    uploadError.textContent = 'Upload failed. Please try again.';
-                    uploadError.classList.remove('hidden');
+        reader.onload = async function(e) {
+            try {
+                const form = new FormData();
+                form.append('file', file);
+
+                const response = await fetch(API_UPLOAD, {
+                    method: 'POST',
+                    body: form
+                });
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(text || 'Upload failed');
                 }
-            }, 1500);
+
+                const data = await response.json();
+                const fileUrl = data.url || (IMG_BASE + (data.filename || file.name));
+                const fileName = data.filename || file.name;
+
+                urlInput.value = fileUrl;
+                copyBtn.disabled = false;
+
+                const imageData = {
+                    id: Date.now(),
+                    name: fileName,
+                    url: fileUrl,
+                    preview: e.target.result,
+                    size: file.size,
+                    type: file.type,
+                    uploadDate: new Date().toISOString()
+                };
+
+                uploadedImages.unshift(imageData);
+                saveToStorage(imageData);
+                showUploadSuccess();
+            } catch (err) {
+                uploadError.textContent = err.message || 'Upload failed. Please try again.';
+                uploadError.classList.remove('hidden');
+            }
         };
         reader.readAsDataURL(file);
     }
@@ -236,11 +254,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const nameElement = item.querySelector('.image-item__name');
             nameElement.innerHTML = `
                 <div class="image-preview">
-                    <img src="${image.preview}" alt="${image.name}" class="preview-thumbnail">
+                    <img src="${image.preview || image.url}" alt="${image.name}" class="preview-thumbnail">
                 </div>
                 <div class="image-info">
                     <span class="image-name">${image.name}</span>
-                    <span class="image-meta">${formatFileSize(image.size)} • ${formatDate(image.uploadDate)}</span>
+                    <span class="image-meta">${(image.size ? formatFileSize(image.size) : '')}${(image.size && image.uploadDate) ? ' • ' : ''}${(image.uploadDate ? formatDate(image.uploadDate) : '')}</span>
                 </div>
             `;
             
@@ -363,6 +381,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Load image list from server and merge with local list
+    async function loadFromServerImages() {
+        try {
+            const response = await fetch(API_LIST, { method: 'GET' });
+            if (!response.ok) {
+                return; // silently ignore; server might not be ready
+            }
+            const files = await response.json(); // expects ["file1.jpg", ...]
+            const serverImages = (Array.isArray(files) ? files : []).map(name => ({
+                id: `srv-${name}`,
+                name,
+                url: IMG_BASE + name,
+                preview: IMG_BASE + name
+            }));
+
+            // Merge without duplicates (by url)
+            const existingByUrl = new Set(uploadedImages.map(i => i.url));
+            const merged = [
+                ...serverImages.filter(i => !existingByUrl.has(i.url)),
+                ...uploadedImages
+            ];
+            uploadedImages = merged;
+        } catch (e) {
+            // ignore fetch errors in UI
+        }
+    }
+
     async function clearAllImages() {
         if (confirm('Are you sure you want to delete all images? This action cannot be undone.')) {
             uploadedImages = [];
@@ -399,6 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setRandomHeroImage();
         await initDB();
         await loadFromStorage();
+        await loadFromServerImages();
     }
 
     initialize();
