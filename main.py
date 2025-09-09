@@ -47,17 +47,17 @@ def serve_image(filename: str):
     # Разрешённые расширения
     ext = os.path.splitext(safe_name)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
-        logger.info("Disallowed extension", filename=safe_name, ext=ext, path=request.path)
+        logger.warning("Disallowed extension", filename=safe_name, ext=ext, path=request.path)
         abort(404, "Not Found")
 
     # Файл должен существовать в папке загрузок
     file_path = os.path.join(UPLOAD_DIR, safe_name)
     if not os.path.isfile(file_path):
-        logger.info("File not found", filename=safe_name, path=request.path)
+        logger.warning("File not found", filename=safe_name, path=request.path)
         abort(404, "Not Found")
 
     # Успешная отдача файла
-    logger.info("Serving image", filename=safe_name, path=request.path)
+    logger.info("Serving image")
     return send_from_directory(UPLOAD_DIR, safe_name)
 
 
@@ -98,9 +98,11 @@ def list_images():
 def upload_image():
     """Реализация загрузки файла в директорию UPLOAD_DIR"""
     if "file" not in request.files:
+        logger.warning("File not found", path=request.path)
         abort(400, "No file")
     file = request.files["file"]
     if file.filename == "":
+        logger.warning("Empty filename")
         abort(400, "Empty filename")
 
     # Проверка расширения
@@ -111,8 +113,10 @@ def upload_image():
     # Читаем в память, проверяем размер
     data = file.read()
     if len(data) == 0:
+        logger.warning("Empty file", filename=data, path=request.path)
         abort(400, "Empty file")
     if len(data) > MAX_FILE_SIZE:
+        logger.warning("File too large", filename=data, path=request.path)
         abort(400, "File too large")
 
     # Верификация и нормализация изображения через Pillow
@@ -120,6 +124,7 @@ def upload_image():
         img = Image.open(BytesIO(data))
         img.verify()  # Проверка структуры файла
     except Exception:
+        logger.warning("Invalid image", filename=data, path=request.path)
         abort(400, "Invalid image")
 
     # Повторно открыть для сохранения после verify()
@@ -145,6 +150,7 @@ def upload_image():
         else:
             img.save(out_path)
     except Exception:
+        logger.warning("Save failed", filename=data, path=request.path)
         abort(500, "Save failed")
 
     logger.info("Uploaded image", filename=filename, size=len(data))
