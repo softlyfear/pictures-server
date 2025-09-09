@@ -1,0 +1,22 @@
+services:
+  app:
+    build: .
+    volumes:
+      - images:/app/images
+      - logs:/app/logs
+    restart: always
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - images:/app/images:ro
+    depends_on:
+      - app
+    restart: always
+
+volumes:
+  images:
+  logs:

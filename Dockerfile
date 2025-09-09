@@ -12,9 +12,6 @@ FROM python:3.13-alpine
 
 WORKDIR /app
 
-EXPOSE 8080
-EXPOSE 5000
-
 COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=builder /usr/local/bin/uv /usr/local/bin/uv
 

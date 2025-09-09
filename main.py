@@ -27,7 +27,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
-    """Загрузка главной страницы"""
+    """Загрузка главной страницы."""
     logger.info(f"Index page is requested")
     return render_template("index.html")
 
@@ -36,7 +36,7 @@ def index():
 def serve_image(filename: str):
     """
     Отдача изображения по имени из UPLOAD_DIR.
-    Включает базовую валидацию имени (traversal) и расширения по белому списку.
+    Включает базовую валидацию имени и расширения по белому списку.
     """
     # Валидация имени файла и защита от path traversal
     safe_name = secure_filename(filename)
@@ -44,7 +44,7 @@ def serve_image(filename: str):
         logger.warning("Invalid filename (traversal attempt)", filename=filename, safe=safe_name, path=request.path)
         abort(400, "Invalid file name")
 
-    # Разрешённые расширения (только изображения)
+    # Разрешённые расширения
     ext = os.path.splitext(safe_name)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         logger.info("Disallowed extension", filename=safe_name, ext=ext, path=request.path)
@@ -63,10 +63,7 @@ def serve_image(filename: str):
 
 @app.route("/api/images", methods=["GET"])
 def list_images():
-    """
-    Возвращает список имён изображений из UPLOAD_DIR.
-    Поддерживает limit/offset как query-параметры (опционально).
-    """
+    """Возвращает список имён изображений из UPLOAD_DIR."""
     try:
         limit = request.args.get("limit", type=int)
         offset = request.args.get("offset", default=0, type=int)
@@ -99,7 +96,7 @@ def list_images():
 
 @app.route("/api/upload", methods=["POST"])
 def upload_image():
-    """"""
+    """Реализация загрузки файла в директорию UPLOAD_DIR"""
     if "file" not in request.files:
         abort(400, "No file")
     file = request.files["file"]
@@ -146,7 +143,7 @@ def upload_image():
         elif ext == ".png":
             img.save(out_path, format="PNG", optimize=True)
         else:
-            img.save(out_path)  # .gif и др. из белого списка
+            img.save(out_path)
     except Exception:
         abort(500, "Save failed")
 
@@ -156,24 +153,24 @@ def upload_image():
 
 @app.errorhandler(400)
 def bad_request(error):
-    """"""
+    """Обработчик ошибки 400"""
     logger.warning("400 Bad Request", error=str(error), path=request.path)
     return "Bad Request", 400
 
 
 @app.errorhandler(404)
 def not_found(error):
-    """"""
+    """Обработчик ошибки 404"""
     logger.info("404 Not Found", error=str(error), path=request.path)
     return "This page does not exist", 404
 
 
 @app.errorhandler(500)
 def internal_error(e):
-    """"""
+    """Обработчик ошибки 500"""
     logger.opt(exception=True).error("Unhandled 500 error")
     return "Internal Server Error", 500
 
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', debug=True)
+    app.run(host="0.0.0.0", port=5000)
