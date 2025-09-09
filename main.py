@@ -1,12 +1,12 @@
 import os
 import sys
-
-from flask import Flask, render_template, abort, send_from_directory, request, jsonify
-from loguru import logger
-from werkzeug.utils import secure_filename
-from uuid import uuid4
 from io import BytesIO
+from uuid import uuid4
+
+from flask import Flask, abort, jsonify, render_template, request, send_from_directory
+from loguru import logger
 from PIL import Image, ImageOps
+from werkzeug.utils import secure_filename
 
 STATIC_FILES_DIR = "static"
 TEMPLATES_FILES_DIR = "templates"
@@ -28,7 +28,7 @@ app = Flask(__name__)
 @app.route("/")
 def index():
     """Загрузка главной страницы."""
-    logger.info(f"Index page is requested")
+    logger.info("Index page is requested")
     return render_template("index.html")
 
 
@@ -41,13 +41,20 @@ def serve_image(filename: str):
     # Валидация имени файла и защита от path traversal
     safe_name = secure_filename(filename)
     if safe_name != os.path.basename(safe_name):
-        logger.warning("Invalid filename (traversal attempt)", filename=filename, safe=safe_name, path=request.path)
+        logger.warning(
+            "Invalid filename (traversal attempt)",
+            filename=filename,
+            safe=safe_name,
+            path=request.path,
+        )
         abort(400, "Invalid file name")
 
     # Разрешённые расширения
     ext = os.path.splitext(safe_name)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
-        logger.warning("Disallowed extension", filename=safe_name, ext=ext, path=request.path)
+        logger.warning(
+            "Disallowed extension", filename=safe_name, ext=ext, path=request.path
+        )
         abort(404, "Not Found")
 
     # Файл должен существовать в папке загрузок
@@ -90,7 +97,7 @@ def list_images():
         logger.info("Images listed", count=len(names), total=len(entries))
         return jsonify(names)
     except Exception as exc:
-        logger.exception("Failed to list images")
+        logger.exception("Failed to list images", exc)
         abort(500, "Internal Server Error")
 
 
@@ -113,10 +120,10 @@ def upload_image():
     # Читаем в память, проверяем размер
     data = file.read()
     if len(data) == 0:
-        logger.warning("Empty file", filename=data, path=request.path)
+        logger.warning("Empty file", filename=file.filename, path=request.path)
         abort(400, "Empty file")
     if len(data) > MAX_FILE_SIZE:
-        logger.warning("File too large", filename=data, path=request.path)
+        logger.warning("File too large", filename=file.filename, path=request.path)
         abort(400, "File too large")
 
     # Верификация и нормализация изображения через Pillow
@@ -124,7 +131,7 @@ def upload_image():
         img = Image.open(BytesIO(data))
         img.verify()  # Проверка структуры файла
     except Exception:
-        logger.warning("Invalid image", filename=data, path=request.path)
+        logger.warning("Invalid image", filename=file.filename, path=request.path)
         abort(400, "Invalid image")
 
     # Повторно открыть для сохранения после verify()
@@ -150,7 +157,7 @@ def upload_image():
         else:
             img.save(out_path)
     except Exception:
-        logger.warning("Save failed", filename=data, path=request.path)
+        logger.warning("Save failed", filename=file.filename, path=request.path)
         abort(500, "Save failed")
 
     logger.info("Uploaded image", filename=filename, size=len(data))

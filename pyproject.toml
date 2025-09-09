@@ -8,5 +8,6 @@ dependencies = [
     "flask>=3.1.2",
     "loguru>=0.7.3",
     "pillow>=11.3.0",
+    "ruff>=0.12.12",
     "uuid>=1.30",
 ]
