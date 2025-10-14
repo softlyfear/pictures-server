@@ -4,6 +4,14 @@ services:
     volumes:
       - images:/app/images
       - logs:/app/logs
+    environment:
+      - DB_HOST=db 
+      - DB_NAME=images_db
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_PORT=5432
+    depends_on:
+      - db  
     restart: always
 
   nginx:
@@ -17,6 +25,19 @@ services:
       - app
     restart: always
 
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: images_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: always
+
 volumes:
   images:
   logs:
+  db_data:

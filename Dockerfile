@@ -16,6 +16,7 @@ COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin/uv /usr/local/bin/uv
 
 COPY main.py .
+COPY database.py .
 COPY static/ ./static/
 COPY templates/ ./templates/
 

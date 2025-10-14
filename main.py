@@ -7,6 +7,8 @@ from flask import Flask, abort, jsonify, render_template, request, send_from_dir
 from loguru import logger
 from PIL import Image, ImageOps
 from werkzeug.utils import secure_filename
+from database import init_database, test_connection
+
 
 STATIC_FILES_DIR = "static"
 TEMPLATES_FILES_DIR = "templates"
@@ -183,6 +185,17 @@ def internal_error(e):
     """Обработчик ошибки 500"""
     logger.opt(exception=True).error("Unhandled 500 error")
     return "Internal Server Error", 500
+
+
+if not test_connection():
+    logger.error("Не удалось подключиться к базе данных")
+    sys.exit(1)
+
+if not init_database():
+    logger.error("Не удалось инициализировать базу данных")
+    sys.exit(1)
+
+logger.info("База данных готова к работе")
 
 
 if __name__ == "__main__":
